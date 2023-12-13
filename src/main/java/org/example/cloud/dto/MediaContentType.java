@@ -6,6 +6,6 @@ public enum MediaContentType {
     VIDEO,
     AUDIO,
     TEXT,
-    TEXT_AND_MEDIA
+    DOC;
 
 }

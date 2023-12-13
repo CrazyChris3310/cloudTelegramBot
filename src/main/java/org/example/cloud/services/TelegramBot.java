@@ -14,10 +14,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
+import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -56,26 +53,39 @@ public class TelegramBot extends TelegramLongPollingBot {
         System.out.println("Telegram bot started");
     }
 
-    public void handleCommand(Message message) throws JsonProcessingException, MalformedURLException {
-        if (message.getText().startsWith("/setchat ")) {
-            String text = message.getText().substring(9);
+    public void handleCommand(Message message) throws MalformedURLException {
+        String[] args = message.getText().split(" ");
+        if (args[0].startsWith("/help")) {
+            String helpMessage = "/help - помощь\n" +
+            "/setchat [chatId] - запросить досутп к vk чату с идентификатором chatId\n" +
+            "/approve_chat uuid - подвердить кодом из vk, что у вас есть доступ к запрошенному чату\n" +
+            "/say_id - узнать id текущего чата";
+            BasicMessage basicMessage = new BasicMessage(TEXT, message.getChatId());
+            basicMessage.setText(helpMessage);
+            sendMessage(basicMessage);
+        } else if (args[0].startsWith("/say_id")) {
+            BasicMessage basicMessage = new BasicMessage(TEXT, message.getChatId());
+            basicMessage.setText(message.getChatId().toString());
+            sendMessage(basicMessage);
+        }
+        else if (args[0].startsWith("/setchat")) {
+            String text = args[1];
+            long chatId;
+            try {
+                chatId = Long.parseLong(text);
+            } catch (Exception e) {
+                BasicMessage errorMessage = new BasicMessage(TEXT, message.getChatId());
+                errorMessage.setText("ChaId should be a number");
+                sendMessage(errorMessage);
+                return;
+            }
             String code = UUID.randomUUID().toString();
-            requestMap.put(message.getChatId(), new ChatCreationRequest(code, System.currentTimeMillis(), Long.parseLong(text)));
+            requestMap.put(message.getChatId(), new ChatCreationRequest(code, System.currentTimeMillis(), chatId));
             BasicMessage codeMessage = new BasicMessage(TEXT, Long.parseLong(text));
             codeMessage.setText("A request to sync this chat to telegram was registered\nApproval code: " + code);
             messageService.send(codeMessage);
-//catch (VkApiException e) {
-//                var typeRef = new TypeReference<HashMap<String, Object>>(){};
-//                var map = objectMapper.readValue(e.getMessage(), typeRef);
-//                Map<String, Object> error = (Map<String, Object>) map.get("error");
-//                if (error.get("error_code").equals(917)) {
-//                    sendMessage(new BasicMessage("", "Bot has no access to this chat", message.getChatId()));
-//                } else {
-//                    throw e;
-//                }
-//            }
-        } else if (message.getText().startsWith("/approve_chat ")) {
-            String text = message.getText().substring(14);
+        } else if (args[0].startsWith("/approve_chat")) {
+            String text = args[1];
             ChatCreationRequest chatCreationRequest = requestMap.get(message.getChatId());
             BasicMessage basicMessage = new BasicMessage(TEXT, message.getChatId());
             if (chatCreationRequest != null) {
@@ -151,7 +161,7 @@ public class TelegramBot extends TelegramLongPollingBot {
             message.setText(msg.getText());
         } else if (msg.getSticker() != null) {
             message.setType(PHOTO);
-            String fileId = msg.getPhoto().stream().max(Comparator.comparingInt(a -> a.getHeight() * a.getWidth())).get().getFileId();
+            String fileId = msg.getSticker().getFileId();
             GetFile getFile = GetFile.builder().fileId(fileId).build();
             File videaoFile = execute(getFile);
             String fileUrl = videaoFile.getFileUrl(getBotToken());
@@ -162,6 +172,13 @@ public class TelegramBot extends TelegramLongPollingBot {
             GetFile getFile = GetFile.builder().fileId(fileId).build();
             File audiFile = execute(getFile);
             String fileUrl = audiFile.getFileUrl(getBotToken());
+            message.setUrl(fileUrl);
+        } else if (msg.getDocument() != null) {
+            message.setType(DOC);
+            String fileId = msg.getDocument().getFileId();
+            GetFile getFile = GetFile.builder().fileId(fileId).build();
+            File file = execute(getFile);
+            String fileUrl = file.getFileUrl(getBotToken());
             message.setUrl(fileUrl);
         }
         else {
@@ -181,7 +198,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     @SqsListener("messages_to_telegram.fifo")
-    public void sendMessage(BasicMessage basicMessage) throws MalformedURLException {
+    public void sendMessage(BasicMessage basicMessage) {
         try {
             if (basicMessage.getType() == TEXT) {
                 SendMessage sm = SendMessage.builder()
@@ -212,8 +229,15 @@ public class TelegramBot extends TelegramLongPollingBot {
                         .caption(basicMessage.getFullname())
                         .build();
                 execute(sm);
+            } else if (basicMessage.getType() == DOC) {
+                URL url = URI.create(basicMessage.getUrl()).toURL();
+                SendDocument sm = SendDocument.builder()
+                        .chatId(basicMessage.getDestination())
+                        .document(new InputFile(url.openStream(), url.getFile()))
+                        .caption(basicMessage.getFullname())
+                        .build();
+                execute(sm);
             }
-            // Actually sending the message
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);      //Any error will be printed here
         } catch (IOException e) {
