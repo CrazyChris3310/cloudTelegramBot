@@ -1,0 +1,51 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.1.5'
+	id 'io.spring.dependency-management' version '1.1.3'
+	id 'idea'
+}
+
+group = 'org.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = '17'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'org.telegram:telegrambots-spring-boot-starter:6.8.0'
+	implementation 'org.telegram:telegrambots-abilities:6.8.0'
+	implementation 'com.fasterxml.jackson.core:jackson-core:2.16.0-rc1'
+//	implementation 'org.springframework.cloud:spring-cloud-starter-aws'
+//	implementation 'org.springframework.cloud:spring-cloud-starter-aws-messaging'
+
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter:3.1.0'
+	implementation 'io.awspring.cloud:spring-cloud-aws-starter-sqs:3.1.0'
+
+
+//	implementation 'org.springframework.cloud:spring-cloud-starter-aws-messaging:2.2.6.RELEASE'
+//	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+//	implementation 'software.amazon.awssdk:sqs:2.21.42'
+
+
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
