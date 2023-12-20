@@ -1,12 +1,10 @@
 package org.example.cloud.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.SneakyThrows;
 import org.example.cloud.dto.BasicMessage;
 import org.example.cloud.dto.ChatCreationRequest;
-import org.example.cloud.dto.MediaContentType;
 import org.example.cloud.entity.ChatMapping;
 import org.example.cloud.repository.ChatsRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -223,12 +221,18 @@ public class TelegramBot extends TelegramLongPollingBot {
                 execute(sm);
             } else if (basicMessage.getType() == AUDIO) {
                 URL url = URI.create(basicMessage.getUrl()).toURL();
-                SendAudio sm = SendAudio.builder()
+//                SendAudio sm = SendAudio.builder()
+//                        .chatId(basicMessage.getDestination())
+//                        .audio(new InputFile(url.openStream(), url.getFile()))
+//                        .caption(basicMessage.getFullname())
+//                        .build();
+//                execute(sm);
+                SendVoice vm = SendVoice.builder()
                         .chatId(basicMessage.getDestination())
-                        .audio(new InputFile(url.openStream(), url.getFile()))
+                        .voice(new InputFile(url.openStream(), url.getFile()))
                         .caption(basicMessage.getFullname())
                         .build();
-                execute(sm);
+                execute(vm);
             } else if (basicMessage.getType() == DOC) {
                 URL url = URI.create(basicMessage.getUrl()).toURL();
                 SendDocument sm = SendDocument.builder()
